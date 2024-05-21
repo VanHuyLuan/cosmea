@@ -87,7 +87,7 @@ fun ProfileScreen(onLogoutClick: () -> Unit, onClickProfile: () -> Unit, onClick
             )
         }
         if(bitmap.value == null){
-            if(userData?.avatar == null){
+            if(userData?.avatar == "null"){
                 Image(
                     painter = painterResource(id = avatarResource.value),
                     contentDescription = "User Avatar",
@@ -156,7 +156,7 @@ fun AboutMeCard(userData : ProfileData) {
         ) {
             Text(text = "About Me", style = MaterialTheme.typography.titleMedium)
             // Replace with actual About Me text
-            Text(text = userData.bio.toString(), style = MaterialTheme.typography.bodyLarge)
+            Text(text = if(userData.bio == "null"){""} else {userData.bio.toString()}, style = MaterialTheme.typography.bodyLarge)
             Friends()
         }
     }

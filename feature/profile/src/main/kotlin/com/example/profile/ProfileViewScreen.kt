@@ -1,13 +1,16 @@
 package com.example.profile
 
 import android.annotation.SuppressLint
+import android.app.DatePickerDialog
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.ImageDecoder
+import android.icu.text.SimpleDateFormat
 import android.os.Build
 import android.provider.MediaStore
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -18,6 +21,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -31,8 +35,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -67,6 +75,8 @@ import com.google.firebase.storage.ktx.storage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
+import java.util.Calendar
+import java.util.Locale
 
 @Composable
 internal fun ProfileViewRoute(
@@ -120,7 +130,6 @@ fun ProfileViewScreen(onBackClick: () -> Unit) {
             }!!
         }
     }
-    val avatarResource = remember { mutableStateOf(R.drawable.avatar_default) }
 
     val coroutineScope = rememberCoroutineScope()
     val sharedPref = context.getSharedPreferences("CosmeaApp", Context.MODE_PRIVATE)
@@ -179,27 +188,12 @@ fun ProfileViewScreen(onBackClick: () -> Unit) {
                         )
                 )
             }
-//            if (bitmap.value == null) {
-//                Image(
-//                    painter = painterResource(id = avatarResource.value),
-//                    contentDescription = "User Avatar",
-//                    modifier = Modifier
-//                        .size(120.dp)
-//                        .clip(CircleShape)
-//                        .background(Color.Transparent)
-//                        .border(
-//                            width = 1.dp,
-//                            color = Color.White,
-//                            shape = CircleShape
-//                        ),
-//                    colorFilter = ColorFilter.tint(Color.Gray)
-//                )
-//            }
             
             if(bitmap.value == null){
-                if(userData?.avatar == null){
+                Log.e("USERDATA", userData?.avatar.toString())
+                if(userData?.avatar == "null" || userData?.avatar == ""){
                     Image(
-                        painter = painterResource(id = avatarResource.value),
+                        painter = painterResource(id = R.drawable.avatar_default),
                         contentDescription = "User Avatar",
                         modifier = Modifier
                             .size(120.dp)
@@ -230,39 +224,6 @@ fun ProfileViewScreen(onBackClick: () -> Unit) {
                     )
                 }
             }
-//            if (userData?.avatar == null && bitmap.value  == null) {
-//                Image(
-//                    painter = painterResource(id = avatarResource.value),
-//                    contentDescription = "User Avatar",
-//                    modifier = Modifier
-//                        .size(120.dp)
-//                        .clip(CircleShape)
-//                        .background(Color.Transparent)
-//                        .border(
-//                            width = 1.dp,
-//                            color = Color.White,
-//                            shape = CircleShape
-//                        ),
-//                    colorFilter = ColorFilter.tint(Color.Gray)
-//                )
-//            } else {
-//                if(bitmap.value == null) {
-//                    Image(
-//                        painter = rememberImagePainter(userData?.avatar),
-//                        contentDescription = "User Avatar",
-//                        contentScale = ContentScale.Crop,
-//                        modifier = Modifier
-//                            .size(120.dp)
-//                            .clip(CircleShape)
-//                            .background(Color.Transparent)
-//                            .border(
-//                                width = 1.dp,
-//                                color = Color.White,
-//                                shape = CircleShape
-//                            )
-//                    )
-//                }
-//            }
 
             if(userNameState == null) {
                 Text(text = "User Name", style = MaterialTheme.typography.titleLarge)
@@ -303,26 +264,46 @@ fun ProfileViewScreen(onBackClick: () -> Unit) {
                     )
                 }
 
+                val calendar = Calendar.getInstance()
+
+                // DatePickerDialog
+                val datePickerDialog = DatePickerDialog(
+                    context,
+                    { _, year, month, dayOfMonth ->
+                        // Update the dobState with the selected date
+                        val sdf = SimpleDateFormat("dd-MM-yyyy", Locale.US)
+                        calendar.set(year, month, dayOfMonth)
+                        dobState!!.value = sdf.format(calendar.time)
+                    },
+                    calendar.get(Calendar.YEAR),
+                    calendar.get(Calendar.MONTH),
+                    calendar.get(Calendar.DAY_OF_MONTH)
+                )
+
                 // Text field for email
-                dobState?.let {
-                    OutlinedTextField(
-                        value = dobState!!.value,
-                        onValueChange = { dobState!!.value = it },
-                        label = { Text("Date Of Birth", style = MaterialTheme.typography.bodyLarge) },
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Email,
-                            imeAction = ImeAction.Done
-                        ),
-                        keyboardActions = KeyboardActions(
-                            onDone = { /* Handle email change */ }
+                Box {
+                    dobState?.let {
+                        OutlinedTextField(
+                            value = if(dobState?.value == "null"){""}else{dobState!!.value},
+                            onValueChange = { dobState!!.value = it },
+                            label = { Text("Date Of Birth", style = MaterialTheme.typography.bodyLarge) },
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Email,
+                                imeAction = ImeAction.Done
+                            ),
                         )
-                    )
+
+                        IconButton(onClick = { datePickerDialog.show() },
+                            modifier = Modifier.padding(start = 230.dp, top = 10.dp),
+                        ) {
+                            Icon(Icons.Default.DateRange, contentDescription = "Select Date")
+                        }
+                    }
                 }
 
-                // Text field for password
                 bioState?.let {
                     OutlinedTextField(
-                        value = bioState!!.value,
+                        value = if(bioState?.value == "null"){""}else{bioState!!.value},
                         onValueChange = { bioState!!.value = it },
                         label = { Text("Story", style = MaterialTheme.typography.bodyLarge) },
                         keyboardOptions = KeyboardOptions(
@@ -340,18 +321,6 @@ fun ProfileViewScreen(onBackClick: () -> Unit) {
                     onClick = {
                         // Handle saving changes
                         isUploading.value = true
-//                        bitmap.value?.let { bitmap ->
-//                            uploadImageToFirebase(bitmap, userData?.id, context as ComponentActivity) {success ->
-//                                isUploading.value = false
-//                                if (success) {
-//                                    Toast.makeText(context, "Uploaded Successfully", Toast.LENGTH_SHORT).show()
-//                                }
-//                                else {
-//                                    Toast.makeText(context, "Failed to Upload", Toast.LENGTH_SHORT).show()
-//                                }
-//                            }
-//                        }
-//                    }
                         coroutineScope.launch {
                             if (bitmap.value != null && idUser != null) {
                                 uploadImageToFirebase(bitmap.value!!, idUser, context as ComponentActivity) { success, imageUrl ->

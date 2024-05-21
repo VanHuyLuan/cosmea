@@ -4,7 +4,6 @@ package com.example.conversation
 import android.annotation.SuppressLint
 import android.content.Context
 import android.net.Uri
-import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -480,8 +479,6 @@ fun ChatItemBubble(
             ) {
                 val isNSFW = remember {mutableStateOf(messageData.nsfw)}
                Box(modifier = Modifier, contentAlignment = Alignment.Center) {
-                   Log.e("IMAGE", messageData.nsfw.toString())
-                   Log.e("IMAGE1", isNSFW.value.toString())
                    Image(
                        painter = rememberAsyncImagePainter(
                             if(isNSFW.value){

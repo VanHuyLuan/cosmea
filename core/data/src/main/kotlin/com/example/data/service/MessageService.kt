@@ -87,8 +87,9 @@ class MessageService(private val realTimeDB: FirebaseDatabase): MessageRepositor
                     val timestamp = message.child("timestamp").getValue(String::class.java)
                     val image = message.child("image").getValue(String::class.java)
                     val file = message.child("file").getValue(String::class.java)
-                    if (id != null && author != null && receiver != null && content != null && timestamp != null) {
-                        messages.add(MessageData(author, receiver, content, timestamp, image, file, id = id))
+                    val nsfw = message.child("nsfw").getValue(Boolean::class.java)
+                    if (id != null && author != null && receiver != null && content != null && timestamp != null && nsfw != null) {
+                        messages.add(MessageData(author, receiver, content, timestamp, image, file, nsfw = nsfw, id = id))
                     }
                 }
                 trySend(messages).isSuccess // Send the messages to the Flow

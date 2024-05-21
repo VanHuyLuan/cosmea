@@ -1,6 +1,7 @@
 package com.example.profile
 
 import android.content.Context
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -21,6 +22,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -68,11 +70,18 @@ fun AccountManagementScreen(
     val sharedPref = context.getSharedPreferences("CosmeaApp", Context.MODE_PRIVATE)
     val idUser: String? = sharedPref.getString("currentUserId", null)
     var userData by remember { mutableStateOf<UserData?>(null) }
+    var userNameState: MutableState<String>? = null
+    var emailState : MutableState<String>? = null
 
     LaunchedEffect(idUser) {
         if (idUser != null) {
             userData = getCurrentAccountData(idUser,coroutineScope)
         }
+    }
+
+    userData?.let {
+        userNameState = remember { mutableStateOf(userData?.username.toString()) }
+        emailState = remember { mutableStateOf(userData?.email.toString()) }
     }
     Background {
         Column(
@@ -104,10 +113,10 @@ fun AccountManagementScreen(
             ) {
                 Text(text = "Your Information!!", style = MaterialTheme.typography.titleLarge )
                 Spacer(modifier = Modifier.height(16.dp))
-                userData?.username?.let {
+                userNameState?.let {
                     OutlinedTextField(
-                        value = it,
-                        onValueChange = { userData?.username = it },
+                        value = userNameState!!.value,
+                        onValueChange = { userNameState!!.value = it },
                         label = { Text("User Name", style = MaterialTheme.typography.titleMedium) },
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Text,
@@ -118,10 +127,10 @@ fun AccountManagementScreen(
                         )
                     )
                 }
-                userData?.email?.let {
+                emailState?.let {
                     OutlinedTextField(
-                        value = it,
-                        onValueChange = { userData?.email = it },
+                        value = emailState!!.value,
+                        onValueChange = { emailState!!.value = it },
                         label = { Text("Email", style = MaterialTheme.typography.titleMedium) },
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Text,
@@ -160,7 +169,15 @@ fun AccountManagementScreen(
                 Button(onClick = onPasswordChangeClick) {
                     Text("Change Password")
                 }
-                Button(onClick = onPasswordChangeClick) {
+                Button(onClick = {
+                    if (idUser != null) {
+                        userData?.let { changeInformation(userData = it, userName = userNameState?.value.toString(), email = emailState?.value.toString(), idUser = idUser, coroutineScope = coroutineScope) }
+                        Toast.makeText(context, "Change Information Successfully", Toast.LENGTH_SHORT).show()
+                    }
+                    else {
+                        Toast.makeText(context, "Failed to change information", Toast.LENGTH_SHORT).show()
+                    }
+                }) {
                     Text("Save")
                 }
                 Button(onClick = onLogoutClick) {
@@ -168,6 +185,21 @@ fun AccountManagementScreen(
                 }
             }
         }
+    }
+}
+fun changeInformation(userData: UserData, userName :String, email: String, idUser: String, coroutineScope: CoroutineScope){
+    userData.username = userName
+    userData.email = email
+    coroutineScope.launch {
+        val userService = UserService(FirebaseFirestore.getInstance())
+        userService.updateUserData(idUser, userData)
+    }
+}
+fun changePassword(userData: UserData, newPassword :String, idUser: String, coroutineScope: CoroutineScope){
+    userData.password = newPassword
+    coroutineScope.launch {
+        val userService = UserService(FirebaseFirestore.getInstance())
+        userService.updateUserData(idUser, userData)
     }
 }
 suspend fun getCurrentAccountData(id: String, coroutineScope: CoroutineScope): UserData? {
@@ -266,13 +298,40 @@ fun ChangePasswordScreen(
                     Text(text = "Password is incorrect!",
                         color = Color.Red,
                         style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(start = 20.dp)
                     )
                 }
                 else {
                     checkChangePassword = true
                     Spacer(modifier = Modifier.height(16.dp))
                 }
+                OutlinedTextField(
+                    value = newPassword,
+                    onValueChange = { newPassword = it },
+                    label = { Text("New Password") },
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Password,
+                        imeAction = ImeAction.Done
+                    ),
+                    visualTransformation = if (passwordVisible) {
+                        // display password if passwordVisible is true
+                        VisualTransformation.None
+                    } else {
+                        // hide password if passwordVisible is false
+                        PasswordVisualTransformation()
+                    },
+                    trailingIcon = {
+                        // display an icon to toggle password visibility
+                        val icon = if (passwordVisible) Icons.Eye else Icons.EyeOff
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = if (passwordVisible) "Hide Password" else "Show Password",
+                            modifier = Modifier.clickable {
+                                passwordVisible = !passwordVisible
+                            }
+                        )
+                    }
+                )
+                Spacer(modifier = Modifier.height(16.dp))
                 OutlinedTextField(
                     value = confirmPassword,
                     onValueChange = { confirmPassword = it },
@@ -297,63 +356,31 @@ fun ChangePasswordScreen(
                     }
 
                 )
-                if(oldPassword != confirmPassword && confirmPassword.toString() != "")
+                if(newPassword != confirmPassword && confirmPassword.toString() != "")
                 {
                     checkChangePassword = false
                     Text(text = "Confirm Password is incorrect!",
                         color = Color.Red,
                         style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(start = 20.dp)
                     )
                 }
                 else {
                     checkChangePassword = true
                     Spacer(modifier = Modifier.height(16.dp))
                 }
-                OutlinedTextField(
-                    value = newPassword,
-                    onValueChange = { newPassword = it },
-                    label = { Text("New Password") },
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Password,
-                        imeAction = ImeAction.Done
-                    ),
-                    keyboardActions = KeyboardActions(
-                        onDone = {
-                            if (newPassword.isNotEmpty()) {
-                                onPasswordChange(newPassword)
-                            }
-                        }
-                    ),
-                    visualTransformation = if (passwordVisible) {
-                        // display password if passwordVisible is true
-                        VisualTransformation.None
-                    } else {
-                        // hide password if passwordVisible is false
-                        PasswordVisualTransformation()
-                    },
-                    trailingIcon = {
-                        // display an icon to toggle password visibility
-                        val icon = if (passwordVisible) Icons.Eye else Icons.EyeOff
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = if (passwordVisible) "Hide Password" else "Show Password",
-                            modifier = Modifier.clickable {
-                                passwordVisible = !passwordVisible
-                            }
-                        )
-                    }
-                )
                 Spacer(modifier = Modifier.height(16.dp))
-                Button(onClick = { if(checkChangePassword){onPasswordChange(newPassword) }}) {
+                Button(onClick = { if(checkChangePassword){
+                    userData?.let { changePassword(userData = it, newPassword = newPassword, idUser = userData?.id.toString() ,coroutineScope ) }
+                    Toast.makeText(context, "Change Password Successfully", Toast.LENGTH_SHORT).show()
+                }
+                    else {
+                    Toast.makeText(context, "Information is incorrect", Toast.LENGTH_SHORT).show()
+                }
+                }) {
                     Text("Change Password")
                 }
                 Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }
-}
-
-fun onPasswordChange(password: String){
-
 }
